@@ -9,7 +9,7 @@ APP_URL = "http://localhost:3000"
 [[d1_databases]]
 binding = "DB"
 database_name = "body-experience-db"
-database_id = "placeholder-id"
+database_id = "094a8e9d-024b-41e5-8864-3f05002272f4"
 
 [env.production]
 vars = { ENVIRONMENT = "production", APP_URL = "https://body-experience.pages.dev" }
