@@ -1,0 +1,29 @@
+{
+  "name": "body-experience-app",
+  "version": "1.0.0",
+  "description": "Bioenergetic analysis application for instructors and students",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "worker:dev": "wrangler dev worker/src/index.ts --local",
+    "worker:deploy": "wrangler deploy worker/src/index.ts",
+    "db:migrate": "wrangler d1 execute body-experience-db --file=./worker/schema.sql",
+    "db:migrate:local": "wrangler d1 execute body-experience-db --file=./worker/schema.sql --local"
+  },
+  "dependencies": {
+    "vue": "^3.4.0",
+    "vue-router": "^4.2.5",
+    "pinia": "^2.1.7",
+    "chart.js": "^4.4.1",
+    "vue-chartjs": "^5.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.5.2",
+    "vite": "^5.0.10",
+    "wrangler": "^3.22.1",
+    "typescript": "^5.3.3",
+    "@cloudflare/workers-types": "^4.20231218.0"
+  }
+}
