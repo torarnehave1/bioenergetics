@@ -2,6 +2,9 @@ name = "body-experience-worker"
 main = "worker/src/index.ts"
 compatibility_date = "2024-01-01"
 
+# Pages build output directory
+pages_build_output_dir = "dist"
+
 [vars]
 ENVIRONMENT = "development"
 APP_URL = "http://localhost:3000"
@@ -12,4 +15,4 @@ database_name = "body-experience-db"
 database_id = "094a8e9d-024b-41e5-8864-3f05002272f4"
 
 [env.production]
-vars = { ENVIRONMENT = "production", APP_URL = "https://body-experience.pages.dev" }
+vars = { ENVIRONMENT = "production", APP_URL = "https://bioenergetics.vegvisr.org" }
