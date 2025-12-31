@@ -1,38 +1,134 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+import { useUserStore } from '../stores/userStore'
 
 const router = useRouter()
 const route = useRoute()
-const authStore = useAuthStore()
+const userStore = useUserStore()
+
+// TWO ENDPOINTS - as per Vegvisr pattern
+const AUTH_API = 'https://bioenergetics-auth-worker.torarnehave.workers.dev'
+const EMAIL_WORKER = 'https://email-worker.torarnehave.workers.dev'
 
 const email = ref('')
-const name = ref('')
-const showNameField = ref(false)
-const sent = ref(false)
-const devLink = ref('')
+const step = ref('email')
+const loading = ref(false)
+const error = ref('')
+const success = ref('')
 
-async function handleSubmit() {
+onMounted(async () => {
+  // Check for magic token in URL
+  const magicToken = route.query.magic || route.query.token
+  if (magicToken) {
+    await verifyMagicToken(magicToken)
+    return
+  }
+
+  // Check if already logged in
+  userStore.loadFromStorage()
+  if (userStore.loggedIn && sessionStorage.getItem('bioenergetics_session_verified') === '1') {
+    router.push('/')
+  }
+})
+
+// Check email via AUTH WORKER
+async function checkEmail() {
+  if (!email.value || !email.value.includes('@')) {
+    error.value = 'Please enter a valid email address'
+    return
+  }
+
+  loading.value = true
+  error.value = ''
+  success.value = ''
+
   try {
-    const response = await authStore.requestMagicLink(email.value, name.value || null)
+    const response = await fetch(`${AUTH_API}/check-email?email=${encodeURIComponent(email.value)}`)
+    const data = await response.json()
 
-    sent.value = true
-
-    // In development, show the magic link
-    if (response.devLink) {
-      devLink.value = response.devLink
+    if (data.exists) {
+      await sendMagicLink()
+    } else {
+      error.value = 'Email not registered. Please contact an administrator.'
     }
-  } catch (err) {
-    console.error('Login error:', err)
+  } catch (e) {
+    error.value = 'Failed to check email. Please try again.'
+  } finally {
+    loading.value = false
   }
 }
 
+// Send magic link via EMAIL WORKER DIRECTLY
+async function sendMagicLink() {
+  loading.value = true
+  error.value = ''
+
+  try {
+    const response = await fetch(`${EMAIL_WORKER}/login/magic/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.value,
+        redirectUrl: 'https://bioenergetics.vegvisr.org/login'
+      })
+    })
+
+    if (response.ok) {
+      step.value = 'magic'
+      success.value = 'Magic link sent! Check your email.'
+    } else {
+      error.value = 'Failed to send magic link. Please try again.'
+    }
+  } catch (e) {
+    error.value = 'Network error. Please try again.'
+  } finally {
+    loading.value = false
+  }
+}
+
+// CRITICAL: After magic link verification, use userContext from fetchUserContext
+// The emailVerificationToken comes from /userdata endpoint, NOT from magic link response
+async function verifyMagicToken(token) {
+  loading.value = true
+  step.value = 'verifying'
+  error.value = ''
+
+  try {
+    const response = await fetch(`${EMAIL_WORKER}/login/magic/verify?token=${encodeURIComponent(token)}`)
+    const data = await response.json()
+
+    if (data.success && data.email) {
+      // fetchUserContext gets emailVerificationToken from /userdata endpoint
+      const userContext = await userStore.fetchUserContext(data.email)
+
+      // IMPORTANT: Use userContext directly - it contains the correct token
+      userStore.setUser(userContext)
+      sessionStorage.setItem('bioenergetics_session_verified', '1')
+      router.push('/')
+    } else {
+      error.value = 'Invalid or expired magic link. Please request a new one.'
+      step.value = 'email'
+    }
+  } catch (e) {
+    error.value = 'Failed to verify magic link. Please try again.'
+    step.value = 'email'
+  } finally {
+    loading.value = false
+    // Clean up URL
+    router.replace({ query: {} })
+  }
+}
+
+function handleSubmit() {
+  if (step.value === 'email') checkEmail()
+}
+
 function resetForm() {
-  sent.value = false
+  step.value = 'email'
   email.value = ''
-  name.value = ''
-  devLink.value = ''
+  error.value = ''
+  success.value = ''
 }
 </script>
 
@@ -44,7 +140,14 @@ function resetForm() {
         <p>Sign in to Body Experience App</p>
       </div>
 
-      <div v-if="!sent" class="login-form">
+      <!-- Verifying state -->
+      <div v-if="step === 'verifying'" class="login-verifying">
+        <div class="spinner"></div>
+        <p>Verifying your login...</p>
+      </div>
+
+      <!-- Email input form -->
+      <div v-else-if="step === 'email'" class="login-form">
         <form @submit.prevent="handleSubmit">
           <div class="form-group">
             <label class="form-label" for="email">Email address</label>
@@ -56,18 +159,7 @@ function resetForm() {
               placeholder="you@example.com"
               required
               autocomplete="email"
-            />
-          </div>
-
-          <div v-if="showNameField" class="form-group">
-            <label class="form-label" for="name">Your name (optional)</label>
-            <input
-              id="name"
-              v-model="name"
-              type="text"
-              class="form-input"
-              placeholder="Your name"
-              autocomplete="name"
+              :disabled="loading"
             />
           </div>
 
@@ -75,25 +167,15 @@ function resetForm() {
             type="submit"
             class="btn btn-primary btn-lg"
             style="width: 100%"
-            :disabled="authStore.loading"
+            :disabled="loading"
           >
-            {{ authStore.loading ? 'Sending...' : 'Send Magic Link' }}
+            {{ loading ? 'Checking...' : 'Continue with Magic Link' }}
           </button>
-
-          <p v-if="!showNameField" class="new-user-link">
-            New here?
-            <button type="button" class="link-btn" @click="showNameField = true">
-              Add your name
-            </button>
-          </p>
         </form>
-
-        <p v-if="authStore.error" class="error-message">
-          {{ authStore.error }}
-        </p>
       </div>
 
-      <div v-else class="login-success">
+      <!-- Magic link sent -->
+      <div v-else-if="step === 'magic'" class="login-success">
         <div class="success-icon">📬</div>
         <h2>Check your email!</h2>
         <p>
@@ -101,16 +183,25 @@ function resetForm() {
           Click the link in the email to sign in.
         </p>
 
-        <!-- Development mode: show magic link -->
-        <div v-if="devLink" class="dev-link-box">
-          <p class="dev-notice">Development mode - Magic link:</p>
-          <a :href="devLink" class="dev-link">{{ devLink }}</a>
+        <div class="button-group">
+          <button class="btn btn-secondary" @click="sendMagicLink" :disabled="loading">
+            {{ loading ? 'Sending...' : 'Resend Magic Link' }}
+          </button>
+          <button class="btn btn-outline" @click="resetForm">
+            Use different email
+          </button>
         </div>
-
-        <button class="btn btn-secondary" @click="resetForm">
-          Try a different email
-        </button>
       </div>
+
+      <!-- Error message -->
+      <p v-if="error" class="error-message">
+        {{ error }}
+      </p>
+
+      <!-- Success message -->
+      <p v-if="success && step !== 'magic'" class="success-message">
+        {{ success }}
+      </p>
     </div>
   </div>
 </template>
@@ -147,26 +238,41 @@ function resetForm() {
   margin: 0;
 }
 
-.new-user-link {
+.login-verifying {
   text-align: center;
-  margin-top: var(--space-md);
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
+  padding: var(--space-xl) 0;
 }
 
-.link-btn {
-  background: none;
-  border: none;
-  color: var(--color-primary);
-  cursor: pointer;
-  text-decoration: underline;
-  font-size: inherit;
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto var(--space-md);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .error-message {
   color: var(--color-danger);
   text-align: center;
   margin-top: var(--space-md);
+  padding: var(--space-sm);
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--radius-md);
+}
+
+.success-message {
+  color: var(--color-success);
+  text-align: center;
+  margin-top: var(--space-md);
+  padding: var(--space-sm);
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: var(--radius-md);
 }
 
 .login-success {
@@ -187,22 +293,19 @@ function resetForm() {
   margin-bottom: var(--space-lg);
 }
 
-.dev-link-box {
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.btn-outline:hover {
   background: var(--color-bg-secondary);
-  border-radius: var(--radius-md);
-  padding: var(--space-md);
-  margin-bottom: var(--space-lg);
-  word-break: break-all;
-}
-
-.dev-notice {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-sm);
-}
-
-.dev-link {
-  font-size: 0.875rem;
-  color: var(--color-primary);
 }
 </style>

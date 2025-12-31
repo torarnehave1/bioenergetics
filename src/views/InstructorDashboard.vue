@@ -1,9 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useAuthStore } from '../stores/auth'
-import api from '../utils/api'
+import { useUserStore } from '../stores/userStore'
 
-const authStore = useAuthStore()
+const userStore = useUserStore()
 
 const students = ref([])
 const selectedStudent = ref(null)
@@ -21,8 +20,8 @@ onMounted(async () => {
 async function loadStudents() {
   loading.value = true
   try {
-    const response = await api.get('/api/users/students')
-    students.value = response.students || []
+    // TODO: Integrate with body-experience-worker API
+    students.value = []
   } catch (err) {
     console.error('Failed to load students:', err)
   } finally {
@@ -46,8 +45,8 @@ async function selectStudent(student) {
 
   loadingProgress.value = true
   try {
-    const response = await api.get(`/api/users/students/${student.id}/progress`)
-    studentProgress.value = response
+    // TODO: Integrate with body-experience-worker API
+    studentProgress.value = null
   } catch (err) {
     console.error('Failed to load student progress:', err)
     studentProgress.value = null
@@ -61,7 +60,7 @@ async function addStudent() {
 
   addingStudent.value = true
   try {
-    await api.post('/api/users/students', { email: newStudentEmail.value })
+    // TODO: Integrate with body-experience-worker API
     await loadStudents()
     showAddModal.value = false
     newStudentEmail.value = ''

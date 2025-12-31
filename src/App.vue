@@ -1,19 +1,27 @@
 <script setup>
 import { RouterView } from 'vue-router'
-import { useAuthStore } from './stores/auth'
+import { computed, onMounted } from 'vue'
+import { useUserStore } from './stores/userStore'
 import NavBar from './components/NavBar.vue'
 import SafetyBanner from './components/SafetyBanner.vue'
 
-const authStore = useAuthStore()
+const userStore = useUserStore()
 
-// Check auth on app load
-authStore.checkAuth()
+// Load user from storage on app load
+onMounted(() => {
+  userStore.loadFromStorage()
+})
+
+const isAuthenticated = computed(() => {
+  const isSessionVerified = sessionStorage.getItem('bioenergetics_session_verified') === '1'
+  return userStore.loggedIn && isSessionVerified
+})
 </script>
 
 <template>
   <div class="app">
     <SafetyBanner />
-    <NavBar v-if="authStore.isAuthenticated" />
+    <NavBar v-if="isAuthenticated" />
     <main class="main-content">
       <RouterView />
     </main>

@@ -1,38 +1,17 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
 const route = useRoute()
-const authStore = useAuthStore()
 
-const verifying = ref(true)
-const error = ref(null)
-
-onMounted(async () => {
-  const token = route.query.token
-
-  if (!token) {
-    error.value = 'No verification token provided'
-    verifying.value = false
-    return
-  }
-
-  try {
-    const success = await authStore.verifyToken(token)
-
-    if (success) {
-      // Redirect to dashboard or original destination
-      const redirect = route.query.redirect || '/dashboard'
-      router.replace(redirect)
-    } else {
-      error.value = 'Invalid or expired token'
-    }
-  } catch (err) {
-    error.value = err.message || 'Verification failed'
-  } finally {
-    verifying.value = false
+// Redirect to login with token - Login.vue handles verification
+onMounted(() => {
+  const token = route.query.token || route.query.magic
+  if (token) {
+    router.replace({ path: '/login', query: { token } })
+  } else {
+    router.replace('/login')
   }
 })
 </script>
@@ -40,18 +19,9 @@ onMounted(async () => {
 <template>
   <div class="verify-page">
     <div class="verify-card">
-      <div v-if="verifying" class="verifying">
+      <div class="verifying">
         <div class="spinner"></div>
-        <p>Verifying your login...</p>
-      </div>
-
-      <div v-else-if="error" class="error">
-        <div class="error-icon">⚠️</div>
-        <h2>Verification Failed</h2>
-        <p>{{ error }}</p>
-        <RouterLink to="/login" class="btn btn-primary">
-          Try Again
-        </RouterLink>
+        <p>Redirecting...</p>
       </div>
     </div>
   </div>
@@ -94,19 +64,5 @@ onMounted(async () => {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-.error-icon {
-  font-size: 3rem;
-  margin-bottom: var(--space-md);
-}
-
-.error h2 {
-  margin-bottom: var(--space-md);
-}
-
-.error p {
-  color: var(--color-text-secondary);
-  margin-bottom: var(--space-lg);
 }
 </style>

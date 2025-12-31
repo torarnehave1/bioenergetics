@@ -1,8 +1,14 @@
 <script setup>
 import { RouterLink } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+import { computed } from 'vue'
+import { useUserStore } from '../stores/userStore'
 
-const authStore = useAuthStore()
+const userStore = useUserStore()
+
+const isAuthenticated = computed(() => {
+  const isSessionVerified = sessionStorage.getItem('bioenergetics_session_verified') === '1'
+  return userStore.loggedIn && isSessionVerified
+})
 </script>
 
 <template>
@@ -17,7 +23,7 @@ const authStore = useAuthStore()
 
         <div class="hero-actions">
           <RouterLink
-            v-if="authStore.isAuthenticated"
+            v-if="isAuthenticated"
             to="/dashboard"
             class="btn btn-primary btn-lg"
           >

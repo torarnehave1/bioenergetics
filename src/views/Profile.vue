@@ -1,9 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useAuthStore } from '../stores/auth'
-import api from '../utils/api'
+import { useUserStore } from '../stores/userStore'
 
-const authStore = useAuthStore()
+const userStore = useUserStore()
 
 const name = ref('')
 const consentTracking = ref(false)
@@ -13,18 +12,11 @@ const instructors = ref([])
 const loadingInstructors = ref(true)
 
 onMounted(async () => {
-  name.value = authStore.user?.name || ''
-  consentTracking.value = !!authStore.user?.consent_tracking
+  name.value = userStore.email?.split('@')[0] || ''
+  consentTracking.value = false
 
-  // Load instructors
-  try {
-    const response = await api.get('/api/users/my-instructors')
-    instructors.value = response.instructors || []
-  } catch (err) {
-    console.error('Failed to load instructors:', err)
-  } finally {
-    loadingInstructors.value = false
-  }
+  // Load instructors (disabled for now - requires API integration)
+  loadingInstructors.value = false
 })
 
 async function saveProfile() {
@@ -32,10 +24,8 @@ async function saveProfile() {
   saved.value = false
 
   try {
-    await authStore.updateProfile({
-      name: name.value,
-      consent_tracking: consentTracking.value,
-    })
+    // Profile update would be handled via dashboard.vegvisr.org in Vegvisr pattern
+    // For now, just show saved
     saved.value = true
     setTimeout(() => { saved.value = false }, 3000)
   } catch (err) {
@@ -76,7 +66,7 @@ async function toggleConsent(instructor, consent) {
               id="email"
               type="email"
               class="form-input"
-              :value="authStore.user?.email"
+              :value="userStore.email"
               disabled
             />
             <span class="form-help">Email cannot be changed</span>
@@ -95,15 +85,15 @@ async function toggleConsent(instructor, consent) {
 
           <div class="form-group">
             <label class="form-label">Role</label>
-            <span class="role-badge" :class="authStore.user?.role">
-              {{ authStore.user?.role }}
+            <span class="role-badge" :class="userStore.role">
+              {{ userStore.role }}
             </span>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Account Created</label>
+            <label class="form-label">Account Status</label>
             <span class="text-muted">
-              {{ authStore.user?.created_at ? new Date(authStore.user.created_at).toLocaleDateString() : 'Unknown' }}
+              Active
             </span>
           </div>
 

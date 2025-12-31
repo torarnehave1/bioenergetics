@@ -1,11 +1,11 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
 import { RouterLink } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+import { useUserStore } from '../stores/userStore'
 import { useProgressStore } from '../stores/progress'
 import { useExperiencesStore } from '../stores/experiences'
 
-const authStore = useAuthStore()
+const userStore = useUserStore()
 const progressStore = useProgressStore()
 const experiencesStore = useExperiencesStore()
 
@@ -30,7 +30,7 @@ const greeting = computed(() => {
 })
 
 const userName = computed(() => {
-  return authStore.user?.name || authStore.user?.email?.split('@')[0] || 'there'
+  return userStore.email?.split('@')[0] || 'there'
 })
 </script>
 

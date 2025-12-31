@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+import { useUserStore } from '../stores/userStore'
 
 // Views
 import Home from '../views/Home.vue'
@@ -95,25 +95,30 @@ const router = createRouter({
 
 // Navigation guards
 router.beforeEach(async (to, from, next) => {
-  const authStore = useAuthStore()
+  const userStore = useUserStore()
 
-  // Wait for auth check to complete
-  if (!authStore.initialized) {
-    await authStore.checkAuth()
+  // Load user from storage if not already logged in
+  if (!userStore.loggedIn) {
+    userStore.loadFromStorage()
   }
 
+  // Check session verification
+  const isSessionVerified = sessionStorage.getItem('bioenergetics_session_verified') === '1'
+  const isAuthenticated = userStore.loggedIn && isSessionVerified
+
   // Redirect authenticated users away from guest pages
-  if (to.meta.guest && authStore.isAuthenticated) {
+  if (to.meta.guest && isAuthenticated) {
     return next({ name: 'Dashboard' })
   }
 
   // Redirect unauthenticated users to login
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+  if (to.meta.requiresAuth && !isAuthenticated) {
     return next({ name: 'Login', query: { redirect: to.fullPath } })
   }
 
   // Check instructor access
-  if (to.meta.requiresInstructor && !authStore.isInstructor) {
+  const isInstructor = userStore.role === 'instructor' || userStore.role === 'Admin' || userStore.role === 'Superadmin'
+  if (to.meta.requiresInstructor && !isInstructor) {
     return next({ name: 'Dashboard' })
   }
 

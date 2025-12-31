@@ -1,14 +1,18 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+import { useUserStore } from '../stores/userStore'
 
 const router = useRouter()
-const authStore = useAuthStore()
+const userStore = useUserStore()
 const menuOpen = ref(false)
 
-async function handleLogout() {
-  await authStore.logout()
+const isInstructor = computed(() =>
+  userStore.role === 'instructor' || userStore.role === 'Admin' || userStore.role === 'Superadmin'
+)
+
+function handleLogout() {
+  userStore.logout()
   router.push('/login')
 }
 </script>
@@ -49,7 +53,7 @@ async function handleLogout() {
           Progress
         </RouterLink>
         <RouterLink
-          v-if="authStore.isInstructor"
+          v-if="isInstructor"
           to="/instructor"
           class="nav-link"
           @click="menuOpen = false"
@@ -62,7 +66,7 @@ async function handleLogout() {
       <div class="navbar-user">
         <RouterLink to="/profile" class="user-link" @click="menuOpen = false">
           <span class="user-avatar">👤</span>
-          <span class="user-name">{{ authStore.user?.name || authStore.user?.email }}</span>
+          <span class="user-name">{{ userStore.email }}</span>
         </RouterLink>
         <button class="btn btn-secondary btn-sm" @click="handleLogout">
           Logout

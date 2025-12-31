@@ -2,10 +2,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useExercisesStore } from '../stores/exercises'
-import { useAuthStore } from '../stores/auth'
+import { useUserStore } from '../stores/userStore'
 
 const exercisesStore = useExercisesStore()
-const authStore = useAuthStore()
+const userStore = useUserStore()
+
+const isInstructor = computed(() =>
+  userStore.role === 'instructor' || userStore.role === 'Admin' || userStore.role === 'Superadmin'
+)
 
 const selectedCategory = ref('')
 const selectedDifficulty = ref('')
@@ -60,7 +64,7 @@ function getDifficultyColor(difficulty) {
         <p class="subtitle">Explore grounding, breathing, and body awareness exercises</p>
       </div>
       <button
-        v-if="authStore.isInstructor"
+        v-if="isInstructor"
         class="btn btn-primary"
         @click="showCreateModal = true"
       >
